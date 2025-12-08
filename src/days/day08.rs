@@ -88,7 +88,8 @@ fn processing(boxes: &[Box], pair_count: usize) -> (Vec<(u64, usize, usize)>, Ds
             edges.push((dist, i, j));
         }
     }
-    edges.sort_by(|a, b| a.0.cmp(&b.0));
+    edges.select_nth_unstable_by(pair_count, |a, b| a.0.cmp(&b.0));
+    edges[..pair_count].sort_unstable_by(|a, b| a.0.cmp(&b.0));
 
     let mut dsu = Dsu::new(n);
     for &(_, a, b) in edges.iter().take(pair_count) {
@@ -107,22 +108,32 @@ fn part1(dsu: &mut Dsu) -> usize {
     sizes.sort_by(|a, b| b.cmp(a));
     sizes.iter().take(3).product()
 }
-fn part2(boxes: &[Box], pair_count: usize, edges: &[(u64, usize, usize)], mut dsu: Dsu) -> usize {
+fn part2(boxes: &[Box], pair_count: usize, edges: &mut [(u64, usize, usize)], mut dsu: Dsu) -> usize {
     let n = boxes.len();
-    for &(_, a, b) in edges.iter().skip(pair_count) {
-        dsu.union(a, b);
-        if dsu.network_count(a) == n {
-            return boxes[a].x * boxes[b].x;
+    let mut skip = pair_count;
+    loop {
+        edges[skip..].select_nth_unstable_by(4 * pair_count, |a, b| a.0.cmp(&b.0));
+        let next_skip = skip + 4 * pair_count;
+        edges[skip..next_skip].sort_unstable_by(|a, b| a.0.cmp(&b.0));
+        for &(_, a, b) in edges.iter().take(next_skip).skip(skip) {
+            dsu.union(a, b);
+            if dsu.network_count(a) == n {
+                return boxes[a].x * boxes[b].x;
+            }
+        }
+        skip = next_skip;
+
+        if next_skip > edges.len() {
+            panic!("Error: Not solution");
         }
     }
-    unreachable!()
 }
 
 pub fn solve() -> SolutionPair {
     let boxes = read_and_parse("inputs/day08.txt");
-    let (edges, mut dsu) = processing(&boxes, 1000);
+    let (mut edges, mut dsu) = processing(&boxes, 1000);
     let sol1 = part1(&mut dsu);
-    let sol2 = part2(&boxes, 1000, &edges, dsu);
+    let sol2 = part2(&boxes, 1000, &mut edges, dsu);
 
     (Solution::from(sol1), Solution::from(sol2))
 }
@@ -141,7 +152,7 @@ mod tests {
     #[test]
     fn test_part2() {
         let boxes = read_and_parse("test_inputs/day08.txt");
-        let (edges, dsu) = processing(&boxes, 10);
-        assert_eq!(part2(&boxes, 10, &edges, dsu), 25272);
+        let (mut edges, dsu) = processing(&boxes, 10);
+        assert_eq!(part2(&boxes, 10, &mut edges, dsu), 25272);
     }
 }
