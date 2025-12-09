@@ -61,12 +61,22 @@ fn part2(points: &[Point]) -> u64 {
         points.last().cloned().unwrap(),
     ));
 
-    (0..points.len() - 1)
-        .flat_map(|i| (i + 1..points.len()).map(move |j| Rectangle::new(points[i], points[j])))
-        .filter(|rect| greens.iter().all(|g| !rect.exceeds_rect(g)))
-        .map(|rect| rect.area())
-        .max()
-        .unwrap()
+    let mut max_area = 0;
+
+    for i in 0..(points.len() - 1) {
+        for j in (i + 1)..points.len() {
+            let rectangle = Rectangle::new(points[i], points[j]);
+            let area = rectangle.area();
+            if area < max_area {
+                continue;
+            }
+            if greens.iter().all(|g| !rectangle.exceeds_rect(g)) {
+                max_area = area;
+            }
+        }
+    }
+
+    max_area
 }
 
 pub fn solve() -> SolutionPair {
